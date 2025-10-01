@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.auth.routes import router as auth_router
+from src.api.endpoints.jira import router as jira_router
+from src.api.endpoints.confluence import router as confluence_router
+from src.middleware.auth import TokenValidationMiddleware, ErrorHandlingMiddleware
 
 # FastAPI app with metadata for OpenAPI documentation
 app = FastAPI(
@@ -13,12 +16,21 @@ app = FastAPI(
             "description": "Authentication endpoints for Jira and Confluence OAuth2 and API token flows"
         },
         {
+            "name": "Jira",
+            "description": "Jira API endpoints for projects and project management"
+        },
+        {
+            "name": "Confluence",
+            "description": "Confluence API endpoints for spaces and content management"
+        },
+        {
             "name": "Health",
             "description": "Health check and system status endpoints"
         }
     ]
 )
 
+# Add middleware in the correct order
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,8 +39,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include authentication routes
+# Add custom middleware
+app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(TokenValidationMiddleware, protected_paths=["/jira", "/confluence"])
+
+# Include routers
 app.include_router(auth_router)
+app.include_router(jira_router)
+app.include_router(confluence_router)
 
 @app.get("/", tags=["Health"], summary="Health Check", description="Check if the API is running and healthy")
 def health_check():
